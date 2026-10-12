@@ -5,8 +5,10 @@ Einfacher Boxtimer als Web-App (PWA) fürs iPhone – private, nicht-kommerziell
 ## Funktionen
 - **Rundenzeit in Grün**, **Pausenzeit in Rot**, Vorbereitungszeit in Gelb – jeweils mit großer Zeitanzeige
 - **Pyramide**: Rundenzeiten steigen und fallen (z. B. 0:10 · 0:20 · 0:30 · 0:20 · 0:10) mit gleicher Pause oder Pausen-Pyramide (z. B. 0:10 · 0:20 · 0:20 · 0:10)
+- **Zirkeltraining**: Stationen, Zeit pro Station, Wechselzeit (1-s-Schritte), Durchgänge und Pause nach jedem Durchgang einstellbar
+- Vorbereitungszeit in jedem Profil einstellbar
 - Zeiten im Editor in 10-Sekunden-Schritten
-- Beliebig viele **Profile** (anlegen, bearbeiten, duplizieren, löschen); Standardprofile: Boxen, Sparring, Sandsack (Pyramide 10·20·30·20·10 s, Pausen 10·20·20·10 s), HIIT
+- Beliebig viele **Profile** (anlegen, bearbeiten, duplizieren, löschen); Standardprofile: Boxen, Sparring, Sandsack (Pyramide 10·20·30·20·10 s, Pausen 10·20·20·10 s), HIIT, Zirkeltraining
 - **Klopfsignal 5 Sekunden** (einstellbar 0–30 s) vor jedem Wechsel, **Gong** bei jedem Wechsel, dreifacher Gong am Ende
 - Start/Pause, nächste Phase überspringen, zurücksetzen
 - Rundenzähler, Fortschrittsbalken, Vorschau der nächsten Phase, Restzeit gesamt

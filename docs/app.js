@@ -2,7 +2,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '1.3.0';
+  const VERSION = '1.4.0';
 
   // ------------------------------------------------------------------
   // Speicher (nur lokal auf dem Gerät)
@@ -25,9 +25,11 @@
     { id: 'p-bag',     name: 'Sandsack', mode: 'pyramid', rounds: 5, round: 30, rest: 10, prep: 10, warn: 5,
       pyrStart: 10, pyrStep: 10, pyrPeak: 30, restMode: 'pyramid', restStart: 10, restStep: 10 },
     { id: 'p-tabata',  name: 'HIIT',     mode: 'equal',   rounds: 8, round: 20,  rest: 10, prep: 10, warn: 5 },
+    { id: 'p-circuit', name: 'Zirkeltraining', mode: 'circuit', rounds: 3, round: 60, rest: 120, prep: 10, warn: 5,
+      stations: 6, station: 60, change: 1, circuits: 3, circuitRest: 120 },
   ];
   const DEFAULT_SETTINGS = { volume: 90, wakeLock: true, endGong: true };
-  const PROFILE_SCHEMA = 3;
+  const PROFILE_SCHEMA = 4;
 
   let profiles = store.get('bt.profiles', null);
   if (!Array.isArray(profiles) || profiles.length === 0) {
@@ -43,6 +45,12 @@
     // Sandsack: Pyramide 10-20-30-20-10 mit Pausen 10-20-20-10
     const bag = DEFAULT_PROFILES.find(p => p.id === 'p-bag');
     profiles = profiles.map(p => (p.id === 'p-bag' ? { ...bag } : p));
+  }
+  if (store.get('bt.schema', 1) < 4 && !profiles.some(p => p.id === 'p-circuit')) {
+    // Zirkeltraining hinter den übrigen Standardprofilen einfügen
+    const circuit = { ...DEFAULT_PROFILES.find(p => p.id === 'p-circuit') };
+    const lastDefault = profiles.reduce((acc, p, i) => (p.id.startsWith('p-') && DEFAULT_PROFILES.some(d => d.id === p.id) ? i : acc), -1);
+    profiles.splice(lastDefault + 1, 0, circuit);
   }
   store.set('bt.schema', PROFILE_SCHEMA);
   let activeId = store.get('bt.activeId', profiles[0].id);
@@ -76,6 +84,7 @@
     return `${s} s`;
   }
   const isPyramid = p => p.mode === 'pyramid';
+  const isCircuit = p => p.mode === 'circuit';
 
   // Rundenzeiten eines Profils, z. B. Pyramide 10, 20, 30, 20, 10
   function roundTimes(p) {
@@ -99,7 +108,7 @@
     return lo === hi ? fmt(lo) : `${fmt(lo)}–${fmt(hi)}`;
   }
   function totalSeconds(p) {
-    return p.prep + sum(roundTimes(p)) + sum(restTimes(p));
+    return sum(buildPhases(p).map(ph => ph.dur));
   }
 
   let toastTimer;
@@ -214,6 +223,12 @@
       n.start(t); n.stop(t + 0.04);
     },
 
+    // einzelner Klopfer (Start einer Station nach dem Wechsel)
+    tick() {
+      if (!this.ready()) return;
+      this.knockOnce(this.ctx.currentTime + 0.02);
+    },
+
     // Klopfsignal: drei schnelle Schläge
     knock() {
       if (!this.ready()) return;
@@ -302,6 +317,17 @@
   function buildPhases(p) {
     const list = [];
     if (p.prep > 0) list.push({ type: 'prep', dur: p.prep, n: 0 });
+    if (isCircuit(p)) {
+      // Zirkel: Stationen mit Wechselzeit, nach jedem Durchgang eine Pause
+      for (let c = 1; c <= p.circuits; c++) {
+        for (let st = 1; st <= p.stations; st++) {
+          list.push({ type: 'round', dur: p.station, n: st, circuit: c });
+          if (st < p.stations && p.change > 0) list.push({ type: 'change', dur: p.change, n: st, circuit: c });
+        }
+        if (c < p.circuits && p.circuitRest > 0) list.push({ type: 'rest', dur: p.circuitRest, n: c, circuit: c });
+      }
+      return list;
+    }
     const times = roundTimes(p);
     const rests = restTimes(p);
     times.forEach((dur, k) => {
@@ -323,8 +349,11 @@
     render();
   }
 
-  function phaseStartSound(phase) {
-    if (phase.type === 'round' || phase.type === 'rest') Sound.gong(1);
+  // Gong bei jedem Wechsel; nach einer kurzen Wechselzeit nur ein Klopfer als Startsignal
+  function phaseStartSound(phase, prev) {
+    if (phase.type === 'change') Sound.gong(1);
+    else if (phase.type === 'round' && prev && prev.type === 'change') Sound.tick();
+    else if (phase.type === 'round' || phase.type === 'rest') Sound.gong(1);
   }
 
   function start() {
@@ -371,7 +400,7 @@
     T.idx = idx;
     T.endAt = now - over + T.phases[idx].dur * 1000;
     T.warned = false;
-    phaseStartSound(T.phases[idx]);
+    phaseStartSound(T.phases[idx], T.phases[idx - 1]);
   }
 
   function skip() {
@@ -383,7 +412,7 @@
     T.warned = false;
     T.remainingMs = T.phases[T.idx].dur * 1000;
     T.endAt = now + T.remainingMs;
-    phaseStartSound(T.phases[T.idx]);
+    phaseStartSound(T.phases[T.idx], T.phases[T.idx - 1]);
     render();
   }
 
@@ -437,7 +466,8 @@
     const p = T.profile;
     const phase = T.phases[T.idx];
     const times = roundTimes(p);
-    const nRounds = times.length;
+    const circuit = isCircuit(p);
+    const nRounds = circuit ? p.circuits : times.length;
     let remMs;
     if (T.state === 'running') remMs = Math.max(0, T.endAt - performance.now());
     else remMs = T.remainingMs;
@@ -447,9 +477,11 @@
     if (T.state === 'idle') {
       phaseAttr = 'idle';
       label = 'BEREIT';
-      timeText = fmt(times[0]);
+      timeText = fmt(circuit ? p.station : times[0]);
       progress = 0;
-      nextText = isPyramid(p)
+      nextText = circuit
+        ? `${p.circuits} × ${p.stations} Stationen à ${fmt(p.station)}  ·  Wechsel ${fmt(p.change)}  ·  Pause ${fmt(p.circuitRest)}`
+        : isPyramid(p)
         ? `Pyramide ${fmt(times[0])} → ${fmt(Math.max(...times))} → ${fmt(times[nRounds - 1])}  ·  Pause ${restLabel(p)}`
         : `${nRounds} × ${fmt(times[0])}  ·  Pause ${restLabel(p)}`;
     } else if (T.state === 'done') {
@@ -460,20 +492,27 @@
       nextText = 'Starke Leistung! 🥊';
     } else {
       phaseAttr = phase.type;
-      label = phase.type === 'round' ? `RUNDE ${phase.n}` : phase.type === 'rest' ? 'PAUSE' : 'VORBEREITUNG';
+      label = phase.type === 'round' ? (circuit ? `STATION ${phase.n}/${p.stations}` : `RUNDE ${phase.n}`)
+        : phase.type === 'rest' ? 'PAUSE'
+        : phase.type === 'change' ? 'WECHSEL'
+        : 'VORBEREITUNG';
       if (T.state === 'paused') label += ' – PAUSIERT';
       timeText = fmt(remSec);
       progress = 1 - remMs / (phase.dur * 1000);
       const nxt = T.phases[T.idx + 1];
-      if (!nxt) nextText = 'Letzte Runde!';
-      else if (nxt.type === 'round') nextText = `Danach: Runde ${nxt.n} (${fmt(nxt.dur)})`;
+      if (!nxt) nextText = circuit ? 'Letzte Station!' : 'Letzte Runde!';
+      else if (nxt.type === 'round') nextText = circuit
+        ? `Danach: Station ${nxt.n} (${fmt(nxt.dur)})`
+        : `Danach: Runde ${nxt.n} (${fmt(nxt.dur)})`;
+      else if (nxt.type === 'change') nextText = `Danach: Wechsel (${fmt(nxt.dur)})`;
       else nextText = `Danach: Pause (${fmt(nxt.dur)})`;
     }
 
     const roundNo = T.state === 'idle' ? 1
       : T.state === 'done' ? nRounds
-      : (phase.type === 'prep' ? 1 : phase.n);
-    const roundText = `Runde ${roundNo}/${nRounds}`;
+      : phase.type === 'prep' ? 1
+      : circuit ? phase.circuit : phase.n;
+    const roundText = `${circuit ? 'Durchgang' : 'Runde'} ${roundNo}/${nRounds}`;
 
     // verbleibende Gesamtzeit
     let totalRem = 0;
@@ -506,7 +545,7 @@
     el.start.setAttribute('aria-label', T.state === 'running' ? 'Pause' : 'Start');
 
     const meta = document.querySelector('meta[name="theme-color"]');
-    const colors = { round: '#17a34a', rest: '#dc2626', prep: '#d99a00', done: '#2b3340', idle: '#111418' };
+    const colors = { round: '#17a34a', rest: '#dc2626', prep: '#d99a00', change: '#2563eb', done: '#2b3340', idle: '#111418' };
     if (meta && currentView === 'timer') meta.setAttribute('content', colors[phaseAttr] || '#111418');
   }
 
@@ -552,14 +591,23 @@
       const meta = document.createElement('span');
       meta.className = 'p-meta';
       const times = roundTimes(p);
-      const roundInfo = isPyramid(p)
-        ? `${fmt(p.pyrStart)}–${fmt(Math.max(...times))}`
-        : fmt(p.round);
-      meta.innerHTML =
-        `<span>${isPyramid(p) ? 'Pyramide · ' : ''}${times.length} ${times.length === 1 ? 'Runde' : 'Runden'}</span>` +
-        `<span class="g">${roundInfo}</span>` +
-        `<span class="r">${restLabel(p)}</span>` +
-        `<span>≈ ${fmt(totalSeconds(p))}</span>`;
+      if (isCircuit(p)) {
+        meta.innerHTML =
+          `<span>Zirkel · ${p.circuits} × ${p.stations} Stationen</span>` +
+          `<span class="g">${fmt(p.station)}</span>` +
+          `<span class="b">${fmt(p.change)}</span>` +
+          `<span class="r">${fmt(p.circuitRest)}</span>` +
+          `<span>≈ ${fmt(totalSeconds(p))}</span>`;
+      } else {
+        const roundInfo = isPyramid(p)
+          ? `${fmt(p.pyrStart)}–${fmt(Math.max(...times))}`
+          : fmt(p.round);
+        meta.innerHTML =
+          `<span>${isPyramid(p) ? 'Pyramide · ' : ''}${times.length} ${times.length === 1 ? 'Runde' : 'Runden'}</span>` +
+          `<span class="g">${roundInfo}</span>` +
+          `<span class="r">${restLabel(p)}</span>` +
+          `<span>≈ ${fmt(totalSeconds(p))}</span>`;
+      }
       sel.append(name, meta);
       sel.addEventListener('click', () => selectProfile(p.id));
 
@@ -599,10 +647,12 @@
   $$('#restModeSwitch button').forEach(b => b.addEventListener('click', () => setRestMode(b.dataset.mode)));
 
   function setEditMode(mode) {
-    editMode = mode === 'pyramid' ? 'pyramid' : 'equal';
+    editMode = ['pyramid', 'circuit'].includes(mode) ? mode : 'equal';
     $$('#modeSwitch button').forEach(b => b.classList.toggle('active', b.dataset.mode === editMode));
     $('#equalFields').hidden = editMode !== 'equal';
     $('#pyramidFields').hidden = editMode !== 'pyramid';
+    $('#circuitFields').hidden = editMode !== 'circuit';
+    $('#restSection').hidden = editMode === 'circuit';
     updateEditTotal();
   }
   $$('#modeSwitch button').forEach(b => b.addEventListener('click', () => setEditMode(b.dataset.mode)));
@@ -645,6 +695,11 @@
       restMode,
       restStart: clamp(fieldValue('restStart'), 0, 5940),
       restStep: clamp(fieldValue('restStep'), 0, 1800),
+      stations: clamp(fieldValue('stations'), 1, 50),
+      station: clamp(fieldValue('station'), 10, 5940),
+      change: clamp(fieldValue('change'), 0, 600),
+      circuits: clamp(fieldValue('circuits'), 1, 20),
+      circuitRest: clamp(fieldValue('circuitRest'), 0, 5940),
       prep: clamp(fieldValue('prep'), 0, 300),
       warn: clamp(fieldValue('warn'), 0, 30),
     };
@@ -658,6 +713,9 @@
     $('#restPreview').textContent = rests.length
       ? `${rests.length} Pausen: ${rests.map(fmt).join(' · ')}`
       : 'Keine Pausen (nur 1 Runde)';
+    $('#circuitPreview').textContent =
+      `${p.circuits} ${p.circuits === 1 ? 'Durchgang' : 'Durchgänge'} × ${p.stations} Stationen à ${fmt(p.station)}, ` +
+      `Wechsel ${fmt(p.change)}, Pause ${fmt(p.circuitRest)}`;
     $('#editTotal').textContent = `Gesamtdauer: ${fmtLong(totalSeconds(p))}`;
   }
 
@@ -668,10 +726,12 @@
       id: 'p-' + Date.now().toString(36),
       name: '', rounds: 3, round: 180, rest: 60, prep: 10, warn: 5,
     };
-    editing = { mode: 'equal', pyrStart: 10, pyrStep: 10, pyrPeak: 30, restMode: 'equal', restStart: 10, restStep: 10, ...editing };
+    editing = { mode: 'equal', pyrStart: 10, pyrStep: 10, pyrPeak: 30, restMode: 'equal', restStart: 10, restStep: 10,
+      stations: 6, station: 60, change: 1, circuits: 3, circuitRest: 120, ...editing };
     $('#editTitle').textContent = editingIsNew ? 'Neues Profil' : 'Profil bearbeiten';
     $('#fName').value = editing.name;
-    ['rounds', 'round', 'rest', 'prep', 'warn', 'pyrStart', 'pyrStep', 'pyrPeak', 'restStart', 'restStep'].forEach(f => setField(f, editing[f]));
+    ['rounds', 'round', 'rest', 'prep', 'warn', 'pyrStart', 'pyrStep', 'pyrPeak', 'restStart', 'restStep',
+      'stations', 'station', 'change', 'circuits', 'circuitRest'].forEach(f => setField(f, editing[f]));
     setEditMode(editing.mode);
     setRestMode(editing.restMode);
     $('#btnDelete').hidden = editingIsNew;

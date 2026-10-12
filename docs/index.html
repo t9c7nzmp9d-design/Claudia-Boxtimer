@@ -70,10 +70,21 @@
         </label>
 
         <div class="field">
+          <span class="field-label"><i class="dot dot-amber"></i>Vorbereitungszeit</span>
+          <div class="timefield" data-field="prep" data-min="0" data-max="300" data-step="10">
+            <button type="button" class="step-btn" data-dir="-1" aria-label="weniger">−</button>
+            <input type="number" inputmode="numeric" class="tf-min" min="0" max="5" aria-label="Minuten"><span class="colon">:</span><input type="number" inputmode="numeric" class="tf-sec" min="0" max="59" aria-label="Sekunden">
+            <button type="button" class="step-btn" data-dir="1" aria-label="mehr">+</button>
+          </div>
+          <small class="muted">Zeit zum Fertigmachen, bevor es losgeht (0 = sofort).</small>
+        </div>
+
+        <div class="field">
           <span class="field-label">Rundenart</span>
           <div class="segmented" id="modeSwitch" role="group">
-            <button type="button" data-mode="equal">Gleiche Runden</button>
+            <button type="button" data-mode="equal">Gleich</button>
             <button type="button" data-mode="pyramid">Pyramide</button>
+            <button type="button" data-mode="circuit">Zirkel</button>
           </div>
         </div>
 
@@ -126,6 +137,52 @@
           <p class="pyr-preview" id="pyrPreview"></p>
         </div>
 
+        <div id="circuitFields" hidden>
+          <div class="field">
+            <span class="field-label">Anzahl Stationen</span>
+            <div class="stepper" data-field="stations" data-min="1" data-max="50" data-step="1">
+              <button type="button" class="step-btn" data-dir="-1" aria-label="weniger">−</button>
+              <input type="number" inputmode="numeric" min="1" max="50">
+              <button type="button" class="step-btn" data-dir="1" aria-label="mehr">+</button>
+            </div>
+          </div>
+          <div class="field field-round">
+            <span class="field-label"><i class="dot dot-green"></i>Zeit pro Station</span>
+            <div class="timefield" data-field="station" data-min="10" data-max="5940" data-step="10">
+              <button type="button" class="step-btn" data-dir="-1" aria-label="weniger">−</button>
+              <input type="number" inputmode="numeric" class="tf-min" min="0" max="99" aria-label="Minuten"><span class="colon">:</span><input type="number" inputmode="numeric" class="tf-sec" min="0" max="59" aria-label="Sekunden">
+              <button type="button" class="step-btn" data-dir="1" aria-label="mehr">+</button>
+            </div>
+          </div>
+          <div class="field field-change">
+            <span class="field-label"><i class="dot dot-blue"></i>Wechselzeit zwischen den Stationen</span>
+            <div class="timefield" data-field="change" data-min="0" data-max="600" data-step="1">
+              <button type="button" class="step-btn" data-dir="-1" aria-label="weniger">−</button>
+              <input type="number" inputmode="numeric" class="tf-min" min="0" max="10" aria-label="Minuten"><span class="colon">:</span><input type="number" inputmode="numeric" class="tf-sec" min="0" max="59" aria-label="Sekunden">
+              <button type="button" class="step-btn" data-dir="1" aria-label="mehr">+</button>
+            </div>
+            <small class="muted">In 1-Sekunden-Schritten. 0 = direkt weiter.</small>
+          </div>
+          <div class="field">
+            <span class="field-label">Anzahl Durchgänge</span>
+            <div class="stepper" data-field="circuits" data-min="1" data-max="20" data-step="1">
+              <button type="button" class="step-btn" data-dir="-1" aria-label="weniger">−</button>
+              <input type="number" inputmode="numeric" min="1" max="20">
+              <button type="button" class="step-btn" data-dir="1" aria-label="mehr">+</button>
+            </div>
+          </div>
+          <div class="field field-rest">
+            <span class="field-label"><i class="dot dot-red"></i>Pause nach jedem Durchgang</span>
+            <div class="timefield" data-field="circuitRest" data-min="0" data-max="5940" data-step="10">
+              <button type="button" class="step-btn" data-dir="-1" aria-label="weniger">−</button>
+              <input type="number" inputmode="numeric" class="tf-min" min="0" max="99" aria-label="Minuten"><span class="colon">:</span><input type="number" inputmode="numeric" class="tf-sec" min="0" max="59" aria-label="Sekunden">
+              <button type="button" class="step-btn" data-dir="1" aria-label="mehr">+</button>
+            </div>
+          </div>
+          <p class="pyr-preview" id="circuitPreview"></p>
+        </div>
+
+        <div id="restSection">
         <div class="field">
           <span class="field-label"><i class="dot dot-red"></i>Pausen</span>
           <div class="segmented" id="restModeSwitch" role="group">
@@ -162,16 +219,8 @@
           </div>
           <p class="pyr-preview rest-preview" id="restPreview"></p>
         </div>
-
-        <div class="field">
-          <span class="field-label"><i class="dot dot-amber"></i>Vorbereitungszeit</span>
-          <div class="timefield" data-field="prep" data-min="0" data-max="300" data-step="10">
-            <button type="button" class="step-btn" data-dir="-1" aria-label="weniger">−</button>
-            <input type="number" inputmode="numeric" class="tf-min" min="0" max="5" aria-label="Minuten"><span class="colon">:</span><input type="number" inputmode="numeric" class="tf-sec" min="0" max="59" aria-label="Sekunden">
-            <button type="button" class="step-btn" data-dir="1" aria-label="mehr">+</button>
-          </div>
-          <small class="muted">Zeit zum Fertigmachen, bevor Runde 1 beginnt (0 = sofort).</small>
         </div>
+
 
         <div class="field">
           <span class="field-label">Klopfsignal vor dem Wechsel (Sekunden)</span>
@@ -247,10 +296,12 @@
         <li><span class="tag tag-amber">Gelb</span> Vorbereitung</li>
         <li><span class="tag tag-green">Grün</span> Runde – große Zeitanzeige</li>
         <li><span class="tag tag-red">Rot</span> Pause – große Zeitanzeige</li>
+        <li><span class="tag tag-blue">Blau</span> Wechsel zwischen Stationen (Zirkeltraining)</li>
         <li><strong>Klopfsignal</strong> 5 Sekunden (einstellbar) vor jedem Wechsel</li>
         <li><strong>Gong</strong> bei jedem Wechsel, dreifacher Gong am Ende</li>
         <li>Beliebig viele Profile anlegen, bearbeiten, duplizieren, löschen</li>
         <li><strong>Pyramide:</strong> Rundenzeiten steigen und fallen, z. B. 0:10 · 0:20 · 0:30 · 0:20 · 0:10 – wahlweise mit gleicher Pause oder Pausen-Pyramide (z. B. 0:10 · 0:20 · 0:20 · 0:10)</li>
+        <li><strong>Zirkeltraining:</strong> Stationen, Zeit pro Station, Wechselzeit, Durchgänge und Pause nach jedem Durchgang frei einstellbar</li>
       </ul>
 
       <h2>Auf dem iPhone installieren</h2>
