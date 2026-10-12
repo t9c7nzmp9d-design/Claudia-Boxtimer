@@ -2,7 +2,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '1.2.0';
+  const VERSION = '1.3.0';
 
   // ------------------------------------------------------------------
   // Speicher (nur lokal auf dem Gerät)
@@ -22,22 +22,27 @@
   const DEFAULT_PROFILES = [
     { id: 'p-amateur', name: 'Boxen',    mode: 'equal',   rounds: 3, round: 180, rest: 60, prep: 10, warn: 5 },
     { id: 'p-sparring',name: 'Sparring', mode: 'equal',   rounds: 6, round: 120, rest: 60, prep: 10, warn: 5 },
-    { id: 'p-bag',     name: 'Sandsack', mode: 'pyramid', rounds: 9, round: 180, rest: 30, prep: 10, warn: 5,
-      pyrStart: 60, pyrStep: 30, pyrPeak: 180 },
+    { id: 'p-bag',     name: 'Sandsack', mode: 'pyramid', rounds: 5, round: 30, rest: 10, prep: 10, warn: 5,
+      pyrStart: 10, pyrStep: 10, pyrPeak: 30, restMode: 'pyramid', restStart: 10, restStep: 10 },
     { id: 'p-tabata',  name: 'HIIT',     mode: 'equal',   rounds: 8, round: 20,  rest: 10, prep: 10, warn: 5 },
   ];
   const DEFAULT_SETTINGS = { volume: 90, wakeLock: true, endGong: true };
-  const PROFILE_SCHEMA = 2;
+  const PROFILE_SCHEMA = 3;
 
   let profiles = store.get('bt.profiles', null);
   if (!Array.isArray(profiles) || profiles.length === 0) {
     profiles = DEFAULT_PROFILES.map(p => ({ ...p }));
-  } else if (store.get('bt.schema', 1) < PROFILE_SCHEMA) {
+  } else if (store.get('bt.schema', 1) < 2) {
     // Standardprofile auf die neue Auswahl umstellen, eigene Profile bleiben erhalten
     const removed = ['p-pro', 'p-mma', 'p-muaythai'];
     const defaultIds = DEFAULT_PROFILES.map(p => p.id);
     const custom = profiles.filter(p => !defaultIds.includes(p.id) && !removed.includes(p.id));
     profiles = [...DEFAULT_PROFILES.map(p => ({ ...p })), ...custom];
+  }
+  if (store.get('bt.schema', 1) < 3) {
+    // Sandsack: Pyramide 10-20-30-20-10 mit Pausen 10-20-20-10
+    const bag = DEFAULT_PROFILES.find(p => p.id === 'p-bag');
+    profiles = profiles.map(p => (p.id === 'p-bag' ? { ...bag } : p));
   }
   store.set('bt.schema', PROFILE_SCHEMA);
   let activeId = store.get('bt.activeId', profiles[0].id);
@@ -80,9 +85,21 @@
     for (let t = start; t < peak && up.length < 49; t += step) up.push(t);
     return [...up, peak, ...up.slice().reverse()];
   }
+  // Pausen zwischen den Runden; als Pyramide steigen sie zur Mitte an, z. B. 10, 20, 20, 10
+  function restTimes(p) {
+    const count = Math.max(0, roundTimes(p).length - 1);
+    if (p.restMode !== 'pyramid') return Array(count).fill(p.rest);
+    return Array.from({ length: count }, (_, i) => p.restStart + p.restStep * Math.min(i, count - 1 - i));
+  }
+  const sum = list => list.reduce((a, b) => a + b, 0);
+  function restLabel(p) {
+    const rests = restTimes(p);
+    if (!rests.length) return fmt(p.rest);
+    const lo = Math.min(...rests), hi = Math.max(...rests);
+    return lo === hi ? fmt(lo) : `${fmt(lo)}–${fmt(hi)}`;
+  }
   function totalSeconds(p) {
-    const times = roundTimes(p);
-    return p.prep + times.reduce((a, b) => a + b, 0) + Math.max(0, times.length - 1) * p.rest;
+    return p.prep + sum(roundTimes(p)) + sum(restTimes(p));
   }
 
   let toastTimer;
@@ -286,10 +303,11 @@
     const list = [];
     if (p.prep > 0) list.push({ type: 'prep', dur: p.prep, n: 0 });
     const times = roundTimes(p);
+    const rests = restTimes(p);
     times.forEach((dur, k) => {
       const i = k + 1;
       list.push({ type: 'round', dur, n: i });
-      if (i < times.length && p.rest > 0) list.push({ type: 'rest', dur: p.rest, n: i });
+      if (i < times.length && rests[k] > 0) list.push({ type: 'rest', dur: rests[k], n: i });
     });
     return list;
   }
@@ -432,8 +450,8 @@
       timeText = fmt(times[0]);
       progress = 0;
       nextText = isPyramid(p)
-        ? `Pyramide ${fmt(times[0])} → ${fmt(Math.max(...times))} → ${fmt(times[nRounds - 1])}  ·  Pause ${fmt(p.rest)}`
-        : `${nRounds} × ${fmt(times[0])}  ·  Pause ${fmt(p.rest)}`;
+        ? `Pyramide ${fmt(times[0])} → ${fmt(Math.max(...times))} → ${fmt(times[nRounds - 1])}  ·  Pause ${restLabel(p)}`
+        : `${nRounds} × ${fmt(times[0])}  ·  Pause ${restLabel(p)}`;
     } else if (T.state === 'done') {
       phaseAttr = 'done';
       label = 'FERTIG';
@@ -540,7 +558,7 @@
       meta.innerHTML =
         `<span>${isPyramid(p) ? 'Pyramide · ' : ''}${times.length} ${times.length === 1 ? 'Runde' : 'Runden'}</span>` +
         `<span class="g">${roundInfo}</span>` +
-        `<span class="r">${fmt(p.rest)}</span>` +
+        `<span class="r">${restLabel(p)}</span>` +
         `<span>≈ ${fmt(totalSeconds(p))}</span>`;
       sel.append(name, meta);
       sel.addEventListener('click', () => selectProfile(p.id));
@@ -569,6 +587,16 @@
   let editing = null;   // Kopie des Profils
   let editingIsNew = false;
   let editMode = 'equal';
+  let restMode = 'equal';
+
+  function setRestMode(mode) {
+    restMode = mode === 'pyramid' ? 'pyramid' : 'equal';
+    $$('#restModeSwitch button').forEach(b => b.classList.toggle('active', b.dataset.mode === restMode));
+    $('#restEqualFields').hidden = restMode !== 'equal';
+    $('#restPyramidFields').hidden = restMode !== 'pyramid';
+    updateEditTotal();
+  }
+  $$('#restModeSwitch button').forEach(b => b.addEventListener('click', () => setRestMode(b.dataset.mode)));
 
   function setEditMode(mode) {
     editMode = mode === 'pyramid' ? 'pyramid' : 'equal';
@@ -614,6 +642,9 @@
       pyrStep: clamp(fieldValue('pyrStep'), 10, 1800),
       pyrPeak: clamp(fieldValue('pyrPeak'), 10, 5940),
       rest: clamp(fieldValue('rest'), 0, 5940),
+      restMode,
+      restStart: clamp(fieldValue('restStart'), 0, 5940),
+      restStep: clamp(fieldValue('restStep'), 0, 1800),
       prep: clamp(fieldValue('prep'), 0, 300),
       warn: clamp(fieldValue('warn'), 0, 30),
     };
@@ -623,6 +654,10 @@
     const p = collectEdit();
     const times = roundTimes(p);
     $('#pyrPreview').textContent = `${times.length} Runden: ${times.map(fmt).join(' · ')}`;
+    const rests = restTimes(p);
+    $('#restPreview').textContent = rests.length
+      ? `${rests.length} Pausen: ${rests.map(fmt).join(' · ')}`
+      : 'Keine Pausen (nur 1 Runde)';
     $('#editTotal').textContent = `Gesamtdauer: ${fmtLong(totalSeconds(p))}`;
   }
 
@@ -633,11 +668,12 @@
       id: 'p-' + Date.now().toString(36),
       name: '', rounds: 3, round: 180, rest: 60, prep: 10, warn: 5,
     };
-    editing = { mode: 'equal', pyrStart: 10, pyrStep: 10, pyrPeak: 30, ...editing };
+    editing = { mode: 'equal', pyrStart: 10, pyrStep: 10, pyrPeak: 30, restMode: 'equal', restStart: 10, restStep: 10, ...editing };
     $('#editTitle').textContent = editingIsNew ? 'Neues Profil' : 'Profil bearbeiten';
     $('#fName').value = editing.name;
-    ['rounds', 'round', 'rest', 'prep', 'warn', 'pyrStart', 'pyrStep', 'pyrPeak'].forEach(f => setField(f, editing[f]));
+    ['rounds', 'round', 'rest', 'prep', 'warn', 'pyrStart', 'pyrStep', 'pyrPeak', 'restStart', 'restStep'].forEach(f => setField(f, editing[f]));
     setEditMode(editing.mode);
+    setRestMode(editing.restMode);
     $('#btnDelete').hidden = editingIsNew;
     $('#btnDuplicate').hidden = editingIsNew;
     updateEditTotal();

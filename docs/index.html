@@ -126,13 +126,41 @@
           <p class="pyr-preview" id="pyrPreview"></p>
         </div>
 
-        <div class="field field-rest">
+        <div class="field">
+          <span class="field-label"><i class="dot dot-red"></i>Pausen</span>
+          <div class="segmented" id="restModeSwitch" role="group">
+            <button type="button" data-mode="equal">Gleiche Pausen</button>
+            <button type="button" data-mode="pyramid">Pausen-Pyramide</button>
+          </div>
+        </div>
+
+        <div class="field field-rest" id="restEqualFields">
           <span class="field-label"><i class="dot dot-red"></i>Pausenzeit</span>
           <div class="timefield" data-field="rest" data-min="0" data-max="5940" data-step="10">
             <button type="button" class="step-btn" data-dir="-1" aria-label="weniger">−</button>
             <input type="number" inputmode="numeric" class="tf-min" min="0" max="99" aria-label="Minuten"><span class="colon">:</span><input type="number" inputmode="numeric" class="tf-sec" min="0" max="59" aria-label="Sekunden">
             <button type="button" class="step-btn" data-dir="1" aria-label="mehr">+</button>
           </div>
+        </div>
+
+        <div id="restPyramidFields" hidden>
+          <div class="field field-rest">
+            <span class="field-label"><i class="dot dot-red"></i>Erste und letzte Pause</span>
+            <div class="timefield" data-field="restStart" data-min="0" data-max="5940" data-step="10">
+              <button type="button" class="step-btn" data-dir="-1" aria-label="weniger">−</button>
+              <input type="number" inputmode="numeric" class="tf-min" min="0" max="99" aria-label="Minuten"><span class="colon">:</span><input type="number" inputmode="numeric" class="tf-sec" min="0" max="59" aria-label="Sekunden">
+              <button type="button" class="step-btn" data-dir="1" aria-label="mehr">+</button>
+            </div>
+          </div>
+          <div class="field field-rest">
+            <span class="field-label"><i class="dot dot-red"></i>Schritt pro Pause (bis zur Mitte)</span>
+            <div class="timefield" data-field="restStep" data-min="0" data-max="1800" data-step="10">
+              <button type="button" class="step-btn" data-dir="-1" aria-label="weniger">−</button>
+              <input type="number" inputmode="numeric" class="tf-min" min="0" max="99" aria-label="Minuten"><span class="colon">:</span><input type="number" inputmode="numeric" class="tf-sec" min="0" max="59" aria-label="Sekunden">
+              <button type="button" class="step-btn" data-dir="1" aria-label="mehr">+</button>
+            </div>
+          </div>
+          <p class="pyr-preview rest-preview" id="restPreview"></p>
         </div>
 
         <div class="field">
@@ -222,7 +250,7 @@
         <li><strong>Klopfsignal</strong> 5 Sekunden (einstellbar) vor jedem Wechsel</li>
         <li><strong>Gong</strong> bei jedem Wechsel, dreifacher Gong am Ende</li>
         <li>Beliebig viele Profile anlegen, bearbeiten, duplizieren, löschen</li>
-        <li><strong>Pyramide:</strong> Rundenzeiten steigen und fallen, z. B. 0:10 · 0:20 · 0:30 · 0:20 · 0:10 – mit gleicher Pause dazwischen</li>
+        <li><strong>Pyramide:</strong> Rundenzeiten steigen und fallen, z. B. 0:10 · 0:20 · 0:30 · 0:20 · 0:10 – wahlweise mit gleicher Pause oder Pausen-Pyramide (z. B. 0:10 · 0:20 · 0:20 · 0:10)</li>
       </ul>
 
       <h2>Auf dem iPhone installieren</h2>
