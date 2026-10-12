@@ -47,6 +47,9 @@
         </button>
       </div>
       <div class="total" id="totalInfo">&nbsp;</div>
+      <button type="button" class="menu-btn" id="menuBtn" aria-label="Menü">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+      </button>
     </section>
 
     <!-- ============ PROFILE LIST ============ -->
@@ -67,6 +70,15 @@
         </label>
 
         <div class="field">
+          <span class="field-label">Rundenart</span>
+          <div class="segmented" id="modeSwitch" role="group">
+            <button type="button" data-mode="equal">Gleiche Runden</button>
+            <button type="button" data-mode="pyramid">Pyramide</button>
+          </div>
+        </div>
+
+        <div id="equalFields">
+        <div class="field">
           <span class="field-label">Anzahl Runden</span>
           <div class="stepper" data-field="rounds" data-min="1" data-max="99" data-step="1">
             <button type="button" class="step-btn" data-dir="-1" aria-label="weniger">−</button>
@@ -77,16 +89,46 @@
 
         <div class="field field-round">
           <span class="field-label"><i class="dot dot-green"></i>Rundenzeit</span>
-          <div class="timefield" data-field="round" data-min="5" data-max="5940" data-step="15">
+          <div class="timefield" data-field="round" data-min="10" data-max="5940" data-step="10">
             <button type="button" class="step-btn" data-dir="-1" aria-label="weniger">−</button>
             <input type="number" inputmode="numeric" class="tf-min" min="0" max="99" aria-label="Minuten"><span class="colon">:</span><input type="number" inputmode="numeric" class="tf-sec" min="0" max="59" aria-label="Sekunden">
             <button type="button" class="step-btn" data-dir="1" aria-label="mehr">+</button>
           </div>
         </div>
 
+        </div>
+
+        <div id="pyramidFields" hidden>
+          <div class="field field-round">
+            <span class="field-label"><i class="dot dot-green"></i>Startzeit (erste und letzte Runde)</span>
+            <div class="timefield" data-field="pyrStart" data-min="10" data-max="5940" data-step="10">
+            <button type="button" class="step-btn" data-dir="-1" aria-label="weniger">−</button>
+            <input type="number" inputmode="numeric" class="tf-min" min="0" max="99" aria-label="Minuten"><span class="colon">:</span><input type="number" inputmode="numeric" class="tf-sec" min="0" max="59" aria-label="Sekunden">
+            <button type="button" class="step-btn" data-dir="1" aria-label="mehr">+</button>
+          </div>
+          </div>
+          <div class="field field-round">
+            <span class="field-label"><i class="dot dot-green"></i>Schritt pro Runde</span>
+            <div class="timefield" data-field="pyrStep" data-min="10" data-max="1800" data-step="10">
+            <button type="button" class="step-btn" data-dir="-1" aria-label="weniger">−</button>
+            <input type="number" inputmode="numeric" class="tf-min" min="0" max="99" aria-label="Minuten"><span class="colon">:</span><input type="number" inputmode="numeric" class="tf-sec" min="0" max="59" aria-label="Sekunden">
+            <button type="button" class="step-btn" data-dir="1" aria-label="mehr">+</button>
+          </div>
+          </div>
+          <div class="field field-round">
+            <span class="field-label"><i class="dot dot-green"></i>Spitze (längste Runde)</span>
+            <div class="timefield" data-field="pyrPeak" data-min="10" data-max="5940" data-step="10">
+            <button type="button" class="step-btn" data-dir="-1" aria-label="weniger">−</button>
+            <input type="number" inputmode="numeric" class="tf-min" min="0" max="99" aria-label="Minuten"><span class="colon">:</span><input type="number" inputmode="numeric" class="tf-sec" min="0" max="59" aria-label="Sekunden">
+            <button type="button" class="step-btn" data-dir="1" aria-label="mehr">+</button>
+          </div>
+          </div>
+          <p class="pyr-preview" id="pyrPreview"></p>
+        </div>
+
         <div class="field field-rest">
           <span class="field-label"><i class="dot dot-red"></i>Pausenzeit</span>
-          <div class="timefield" data-field="rest" data-min="0" data-max="5940" data-step="5">
+          <div class="timefield" data-field="rest" data-min="0" data-max="5940" data-step="10">
             <button type="button" class="step-btn" data-dir="-1" aria-label="weniger">−</button>
             <input type="number" inputmode="numeric" class="tf-min" min="0" max="99" aria-label="Minuten"><span class="colon">:</span><input type="number" inputmode="numeric" class="tf-sec" min="0" max="59" aria-label="Sekunden">
             <button type="button" class="step-btn" data-dir="1" aria-label="mehr">+</button>
@@ -95,7 +137,7 @@
 
         <div class="field">
           <span class="field-label"><i class="dot dot-amber"></i>Vorbereitungszeit</span>
-          <div class="timefield" data-field="prep" data-min="0" data-max="300" data-step="5">
+          <div class="timefield" data-field="prep" data-min="0" data-max="300" data-step="10">
             <button type="button" class="step-btn" data-dir="-1" aria-label="weniger">−</button>
             <input type="number" inputmode="numeric" class="tf-min" min="0" max="5" aria-label="Minuten"><span class="colon">:</span><input type="number" inputmode="numeric" class="tf-sec" min="0" max="59" aria-label="Sekunden">
             <button type="button" class="step-btn" data-dir="1" aria-label="mehr">+</button>
@@ -180,6 +222,7 @@
         <li><strong>Klopfsignal</strong> 5 Sekunden (einstellbar) vor jedem Wechsel</li>
         <li><strong>Gong</strong> bei jedem Wechsel, dreifacher Gong am Ende</li>
         <li>Beliebig viele Profile anlegen, bearbeiten, duplizieren, löschen</li>
+        <li><strong>Pyramide:</strong> Rundenzeiten steigen und fallen, z. B. 0:10 · 0:20 · 0:30 · 0:20 · 0:10 – mit gleicher Pause dazwischen</li>
       </ul>
 
       <h2>Auf dem iPhone installieren</h2>

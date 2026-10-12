@@ -2,7 +2,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '1.0.0';
+  const VERSION = '1.1.0';
 
   // ------------------------------------------------------------------
   // Speicher (nur lokal auf dem Gerät)
@@ -62,8 +62,19 @@
     if (m) return `${m} min`;
     return `${s} s`;
   }
+  const isPyramid = p => p.mode === 'pyramid';
+
+  // Rundenzeiten eines Profils, z. B. Pyramide 10, 20, 30, 20, 10
+  function roundTimes(p) {
+    if (!isPyramid(p)) return Array(p.rounds).fill(p.round);
+    const start = p.pyrStart, step = Math.max(1, p.pyrStep), peak = Math.max(p.pyrStart, p.pyrPeak);
+    const up = [];
+    for (let t = start; t < peak && up.length < 49; t += step) up.push(t);
+    return [...up, peak, ...up.slice().reverse()];
+  }
   function totalSeconds(p) {
-    return p.prep + p.rounds * p.round + Math.max(0, p.rounds - 1) * p.rest;
+    const times = roundTimes(p);
+    return p.prep + times.reduce((a, b) => a + b, 0) + Math.max(0, times.length - 1) * p.rest;
   }
 
   let toastTimer;
@@ -266,10 +277,12 @@
   function buildPhases(p) {
     const list = [];
     if (p.prep > 0) list.push({ type: 'prep', dur: p.prep, n: 0 });
-    for (let i = 1; i <= p.rounds; i++) {
-      list.push({ type: 'round', dur: p.round, n: i });
-      if (i < p.rounds && p.rest > 0) list.push({ type: 'rest', dur: p.rest, n: i });
-    }
+    const times = roundTimes(p);
+    times.forEach((dur, k) => {
+      const i = k + 1;
+      list.push({ type: 'round', dur, n: i });
+      if (i < times.length && p.rest > 0) list.push({ type: 'rest', dur: p.rest, n: i });
+    });
     return list;
   }
 
@@ -397,6 +410,8 @@
   function render() {
     const p = T.profile;
     const phase = T.phases[T.idx];
+    const times = roundTimes(p);
+    const nRounds = times.length;
     let remMs;
     if (T.state === 'running') remMs = Math.max(0, T.endAt - performance.now());
     else remMs = T.remainingMs;
@@ -406,9 +421,11 @@
     if (T.state === 'idle') {
       phaseAttr = 'idle';
       label = 'BEREIT';
-      timeText = fmt(p.round);
+      timeText = fmt(times[0]);
       progress = 0;
-      nextText = `${p.rounds} × ${fmt(p.round)}  ·  Pause ${fmt(p.rest)}`;
+      nextText = isPyramid(p)
+        ? `Pyramide ${fmt(times[0])} → ${fmt(Math.max(...times))} → ${fmt(times[nRounds - 1])}  ·  Pause ${fmt(p.rest)}`
+        : `${nRounds} × ${fmt(times[0])}  ·  Pause ${fmt(p.rest)}`;
     } else if (T.state === 'done') {
       phaseAttr = 'done';
       label = 'FERTIG';
@@ -428,9 +445,9 @@
     }
 
     const roundNo = T.state === 'idle' ? 1
-      : T.state === 'done' ? p.rounds
+      : T.state === 'done' ? nRounds
       : (phase.type === 'prep' ? 1 : phase.n);
-    const roundText = `Runde ${roundNo}/${p.rounds}`;
+    const roundText = `Runde ${roundNo}/${nRounds}`;
 
     // verbleibende Gesamtzeit
     let totalRem = 0;
@@ -455,6 +472,7 @@
     el.view.classList.toggle('warn', !!warnActive);
     el.label.textContent = label;
     el.time.textContent = timeText;
+    el.time.classList.toggle('long', timeText.length > 4);
     el.next.textContent = nextText;
     el.rounds.textContent = roundText;
     el.total.textContent = totalText;
@@ -475,6 +493,12 @@
     resetTimer();
   });
   $('#profileChip').addEventListener('click', () => { location.hash = '#/profile'; });
+  // Querformat: Menü-Quadrat in der Ecke blendet die Navigation ein/aus
+  $('#menuBtn').addEventListener('click', e => {
+    e.stopPropagation();
+    document.body.classList.toggle('menu-open');
+  });
+  el.view.addEventListener('click', () => document.body.classList.remove('menu-open'));
 
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
@@ -501,9 +525,13 @@
       name.textContent = (p.id === activeId ? '✓ ' : '') + p.name;
       const meta = document.createElement('span');
       meta.className = 'p-meta';
+      const times = roundTimes(p);
+      const roundInfo = isPyramid(p)
+        ? `${fmt(p.pyrStart)}–${fmt(Math.max(...times))}`
+        : fmt(p.round);
       meta.innerHTML =
-        `<span>${p.rounds} ${p.rounds === 1 ? 'Runde' : 'Runden'}</span>` +
-        `<span class="g">${fmt(p.round)}</span>` +
+        `<span>${isPyramid(p) ? 'Pyramide · ' : ''}${times.length} ${times.length === 1 ? 'Runde' : 'Runden'}</span>` +
+        `<span class="g">${roundInfo}</span>` +
         `<span class="r">${fmt(p.rest)}</span>` +
         `<span>≈ ${fmt(totalSeconds(p))}</span>`;
       sel.append(name, meta);
@@ -532,6 +560,16 @@
   // --- Editor ---
   let editing = null;   // Kopie des Profils
   let editingIsNew = false;
+  let editMode = 'equal';
+
+  function setEditMode(mode) {
+    editMode = mode === 'pyramid' ? 'pyramid' : 'equal';
+    $$('#modeSwitch button').forEach(b => b.classList.toggle('active', b.dataset.mode === editMode));
+    $('#equalFields').hidden = editMode !== 'equal';
+    $('#pyramidFields').hidden = editMode !== 'pyramid';
+    updateEditTotal();
+  }
+  $$('#modeSwitch button').forEach(b => b.addEventListener('click', () => setEditMode(b.dataset.mode)));
 
   function readTimefield(tf) {
     const m = parseInt($('.tf-min', tf).value, 10) || 0;
@@ -561,8 +599,12 @@
     return {
       ...editing,
       name: $('#fName').value.trim() || 'Profil',
+      mode: editMode,
       rounds: clamp(fieldValue('rounds'), 1, 99),
-      round: clamp(fieldValue('round'), 5, 5940),
+      round: clamp(fieldValue('round'), 10, 5940),
+      pyrStart: clamp(fieldValue('pyrStart'), 10, 5940),
+      pyrStep: clamp(fieldValue('pyrStep'), 10, 1800),
+      pyrPeak: clamp(fieldValue('pyrPeak'), 10, 5940),
       rest: clamp(fieldValue('rest'), 0, 5940),
       prep: clamp(fieldValue('prep'), 0, 300),
       warn: clamp(fieldValue('warn'), 0, 30),
@@ -571,6 +613,8 @@
   function updateEditTotal() {
     if (!editing) return;
     const p = collectEdit();
+    const times = roundTimes(p);
+    $('#pyrPreview').textContent = `${times.length} Runden: ${times.map(fmt).join(' · ')}`;
     $('#editTotal').textContent = `Gesamtdauer: ${fmtLong(totalSeconds(p))}`;
   }
 
@@ -581,9 +625,11 @@
       id: 'p-' + Date.now().toString(36),
       name: '', rounds: 3, round: 180, rest: 60, prep: 10, warn: 5,
     };
+    editing = { mode: 'equal', pyrStart: 10, pyrStep: 10, pyrPeak: 30, ...editing };
     $('#editTitle').textContent = editingIsNew ? 'Neues Profil' : 'Profil bearbeiten';
     $('#fName').value = editing.name;
-    ['rounds', 'round', 'rest', 'prep', 'warn'].forEach(f => setField(f, editing[f]));
+    ['rounds', 'round', 'rest', 'prep', 'warn', 'pyrStart', 'pyrStep', 'pyrPeak'].forEach(f => setField(f, editing[f]));
+    setEditMode(editing.mode);
     $('#btnDelete').hidden = editingIsNew;
     $('#btnDuplicate').hidden = editingIsNew;
     updateEditTotal();
@@ -715,6 +761,8 @@
     else if (h === 'datenschutz') view = 'privacy';
 
     currentView = view;
+    document.body.classList.toggle('on-timer', view === 'timer');
+    document.body.classList.remove('menu-open');
     Object.entries(views).forEach(([k, sel]) => { $(sel).hidden = k !== view; });
     $$('#tabbar a').forEach(a => a.classList.toggle('active', a.dataset.tab === tabOf[view]));
     const meta = document.querySelector('meta[name="theme-color"]');

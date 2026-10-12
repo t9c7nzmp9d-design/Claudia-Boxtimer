@@ -1,5 +1,5 @@
 /* Service Worker: macht die App offline-fähig. Keine Daten werden gesendet. */
-const CACHE = 'boxtimer-v1.0.0';
+const CACHE = 'boxtimer-v1.1.0';
 const ASSETS = [
   './',
   'index.html',

@@ -160,19 +160,95 @@ a { color: #7cc4ff; }
 }
 
 /* Landscape: time beside controls for max size */
+.time.long { font-size: min(24vw, 32vh); }
+
+/* Menü-Quadrat (nur im Querformat sichtbar) */
+.menu-btn {
+  display: none;
+  position: absolute;
+  left: max(12px, env(safe-area-inset-left));
+  bottom: max(12px, var(--safe-b));
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(0,0,0,.28);
+  place-items: center;
+  z-index: 5;
+}
+.menu-btn svg { width: 26px; height: 26px; fill: currentColor; }
+.menu-open .menu-btn { background: rgba(0,0,0,.6); }
+
+/* Querformat: keine Leiste unten, Ziffern so groß wie möglich */
 @media (orientation: landscape) and (max-height: 520px) {
-  :root { --tabbar-h: 44px; }
-  .tabbar a { flex-direction: row; gap: 6px; }
+  body.on-timer .tabbar { display: none; }
+  body.on-timer.menu-open .tabbar {
+    display: flex;
+    left: calc(max(12px, env(safe-area-inset-left)) + 60px);
+    right: auto;
+    bottom: max(12px, var(--safe-b));
+    height: 48px;
+    padding: 0 6px;
+    border: 0;
+    border-radius: 12px;
+    background: rgba(17,20,24,.96);
+    box-shadow: 0 4px 20px rgba(0,0,0,.4);
+  }
+  body.on-timer.menu-open .tabbar a { flex: none; flex-direction: row; gap: 6px; padding: 0 12px; font-size: .9rem; }
+  body.on-timer .menu-btn { display: grid; }
+  body.on-timer #view-timer { bottom: 0; }
+
+  #view-timer {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto 1fr;
+    padding: max(8px, var(--safe-t)) max(16px, env(safe-area-inset-right)) max(8px, var(--safe-b)) max(16px, env(safe-area-inset-left));
+  }
+  .timer-head { grid-column: 1 / -1; }
+  .timer-body { grid-column: 1; grid-row: 2; padding-bottom: 6px; }
+  .controls { grid-column: 2; grid-row: 2; flex-direction: column; gap: 14px; padding: 0 0 0 12px; }
+  .timer-body { padding-left: 56px; }
+  .phase-label {
+    position: absolute;
+    top: max(14px, var(--safe-t));
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 1.4rem;
+    white-space: nowrap;
+  }
+  .time { font-size: min(32vw, 70vh); margin: 0 0 1vh; }
+  .time.long { font-size: min(25vw, 64vh); }
   .next { margin-top: 6px; font-size: 1rem; }
-  #view-timer { flex-direction: row; flex-wrap: wrap; align-items: center; }
-  .timer-head { width: 100%; }
-  .timer-body { flex: 1; }
-  .time { font-size: min(24vw, 46vh); margin: 0 0 1vh; }
-  .phase-label { font-size: 1.5rem; }
-  .controls { flex-direction: column; gap: 14px; padding: 0 8px; }
   .ctrl-main { width: 76px; height: 76px; }
-  .ctrl-small { width: 52px; height: 52px; }
+  .ctrl-small { width: 54px; height: 54px; }
   .total { display: none; }
+}
+
+/* Pyramide / Umschalter im Editor */
+.segmented {
+  display: flex;
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 4px;
+  gap: 4px;
+}
+.segmented button {
+  flex: 1;
+  border: 0;
+  border-radius: 9px;
+  padding: 11px 8px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+}
+.segmented button.active { background: var(--green); color: #fff; }
+.pyr-preview {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 10px 14px;
+  color: #4ade80;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
 
 /* ---------------- Pages ---------------- */
