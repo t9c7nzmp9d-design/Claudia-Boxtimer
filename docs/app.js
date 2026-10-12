@@ -2,7 +2,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '1.1.0';
+  const VERSION = '1.2.0';
 
   // ------------------------------------------------------------------
   // Speicher (nur lokal auf dem Gerät)
@@ -20,18 +20,26 @@
   };
 
   const DEFAULT_PROFILES = [
-    { id: 'p-amateur', name: 'Boxen Amateur',  rounds: 3,  round: 180, rest: 60,  prep: 10, warn: 5 },
-    { id: 'p-pro',     name: 'Boxen Profi',    rounds: 12, round: 180, rest: 60,  prep: 10, warn: 5 },
-    { id: 'p-sparring',name: 'Sparring',       rounds: 6,  round: 120, rest: 60,  prep: 10, warn: 5 },
-    { id: 'p-bag',     name: 'Sandsack',       rounds: 8,  round: 180, rest: 30,  prep: 10, warn: 5 },
-    { id: 'p-mma',     name: 'MMA',            rounds: 3,  round: 300, rest: 60,  prep: 10, warn: 5 },
-    { id: 'p-muaythai',name: 'Muay Thai',      rounds: 5,  round: 180, rest: 120, prep: 10, warn: 5 },
-    { id: 'p-tabata',  name: 'Tabata (HIIT)',  rounds: 8,  round: 20,  rest: 10,  prep: 10, warn: 5 },
+    { id: 'p-amateur', name: 'Boxen',    mode: 'equal',   rounds: 3, round: 180, rest: 60, prep: 10, warn: 5 },
+    { id: 'p-sparring',name: 'Sparring', mode: 'equal',   rounds: 6, round: 120, rest: 60, prep: 10, warn: 5 },
+    { id: 'p-bag',     name: 'Sandsack', mode: 'pyramid', rounds: 9, round: 180, rest: 30, prep: 10, warn: 5,
+      pyrStart: 60, pyrStep: 30, pyrPeak: 180 },
+    { id: 'p-tabata',  name: 'HIIT',     mode: 'equal',   rounds: 8, round: 20,  rest: 10, prep: 10, warn: 5 },
   ];
   const DEFAULT_SETTINGS = { volume: 90, wakeLock: true, endGong: true };
+  const PROFILE_SCHEMA = 2;
 
   let profiles = store.get('bt.profiles', null);
-  if (!Array.isArray(profiles) || profiles.length === 0) profiles = DEFAULT_PROFILES.map(p => ({ ...p }));
+  if (!Array.isArray(profiles) || profiles.length === 0) {
+    profiles = DEFAULT_PROFILES.map(p => ({ ...p }));
+  } else if (store.get('bt.schema', 1) < PROFILE_SCHEMA) {
+    // Standardprofile auf die neue Auswahl umstellen, eigene Profile bleiben erhalten
+    const removed = ['p-pro', 'p-mma', 'p-muaythai'];
+    const defaultIds = DEFAULT_PROFILES.map(p => p.id);
+    const custom = profiles.filter(p => !defaultIds.includes(p.id) && !removed.includes(p.id));
+    profiles = [...DEFAULT_PROFILES.map(p => ({ ...p })), ...custom];
+  }
+  store.set('bt.schema', PROFILE_SCHEMA);
   let activeId = store.get('bt.activeId', profiles[0].id);
   let settings = { ...DEFAULT_SETTINGS, ...store.get('bt.settings', {}) };
 
