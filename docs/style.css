@@ -35,7 +35,7 @@ a { color: #7cc4ff; }
 
 #app { min-height: 100%; }
 
-.view[hidden] { display: none !important; }
+[hidden] { display: none !important; }
 
 /* ---------------- Timer ---------------- */
 #view-timer {
@@ -432,3 +432,5 @@ input[type="range"] { width: 100%; accent-color: var(--green); height: 32px; }
   max-width: calc(100% - 32px);
   text-align: center;
 }
+
+.rest-preview { color: #f87171; }
