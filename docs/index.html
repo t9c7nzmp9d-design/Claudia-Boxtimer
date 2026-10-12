@@ -316,7 +316,12 @@
       <p class="muted">Nutzung auf eigene Gefahr. Für Richtigkeit, Verfügbarkeit und Eignung für einen bestimmten Zweck wird keine Gewähr übernommen. Training bitte immer an die eigene Gesundheit anpassen.</p>
 
       <p><a href="#/datenschutz" class="btn btn-block">Datenschutzerklärung</a></p>
-      <p class="muted small">Version <span id="appVersion"></span></p>
+      <h2>Updates</h2>
+      <div class="update-box" id="updateBox">
+        <p id="updateStatus" class="muted">Installierte Version: <strong id="appVersion"></strong></p>
+        <button type="button" class="btn btn-primary btn-block" id="btnUpdate" hidden>Neue Version installieren</button>
+        <button type="button" class="btn btn-block" id="btnCheckUpdate">Nach Updates suchen</button>
+      </div>
     </section>
 
     <!-- ============ DATENSCHUTZ ============ -->
@@ -369,6 +374,7 @@
     <a href="#/info" data-tab="info">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/></svg>
       <span>Info</span>
+      <i class="update-dot" id="updateDot" hidden></i>
     </a>
   </nav>
 

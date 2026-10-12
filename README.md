@@ -28,3 +28,6 @@ Seite in **Safari** öffnen → **Teilen** → **„Zum Home-Bildschirm“**.
 ```
 cd docs && python3 -m http.server 8000
 ```
+
+## Neue Version veröffentlichen
+Versionsnummer an drei Stellen gleich erhöhen: `VERSION` in `docs/app.js`, `CACHE` in `docs/sw.js` und `docs/version.json`. Die App zeigt dann auf der Info-Seite einen Button „Version … installieren“.

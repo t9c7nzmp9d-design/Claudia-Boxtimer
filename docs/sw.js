@@ -1,5 +1,5 @@
 /* Service Worker: macht die App offline-fähig. Keine Daten werden gesendet. */
-const CACHE = 'boxtimer-v1.4.1';
+const CACHE = 'boxtimer-v1.5.0';
 const ASSETS = [
   './',
   'index.html',
@@ -13,7 +13,12 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  // 'reload' umgeht den Browser-Cache, damit wirklich die neuen Dateien gespeichert werden
+  e.waitUntil(
+    caches.open(CACHE)
+      .then(c => c.addAll(ASSETS.map(url => new Request(url, { cache: 'reload' }))))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', e => {
@@ -24,13 +29,14 @@ self.addEventListener('activate', e => {
   );
 });
 
-// Netzwerk zuerst (für Updates), bei Offline aus dem Cache
+// Netzwerk zuerst (immer beim Server nachfragen), bei Offline aus dem Cache
 self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET' || new URL(e.request.url).origin !== location.origin) return;
+  const url = new URL(e.request.url);
+  if (e.request.method !== 'GET' || url.origin !== location.origin) return;
   e.respondWith(
-    fetch(e.request)
+    fetch(url.href, { cache: 'no-cache' })
       .then(res => {
-        if (res.ok) {
+        if (res.ok && !url.pathname.endsWith('version.json')) {
           const copy = res.clone();
           caches.open(CACHE).then(c => c.put(e.request, copy));
         }

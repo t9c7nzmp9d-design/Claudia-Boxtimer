@@ -440,3 +440,17 @@ input[type="range"] { width: 100%; accent-color: var(--green); height: 32px; }
 .dot-blue { background: var(--blue); }
 .tag-blue { background: var(--blue); }
 .field-change .timefield { box-shadow: inset 0 0 0 2px #1d4ed8; }
+
+.update-box { background: var(--surface); border-radius: 14px; padding: 4px 16px 16px; }
+.update-box .btn-block:first-of-type { margin-top: 8px; }
+.update-box.has-update { box-shadow: inset 0 0 0 2px var(--green); }
+.tabbar a { position: relative; }
+.update-dot {
+  position: absolute;
+  top: 6px;
+  left: calc(50% + 8px);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #4ade80;
+}

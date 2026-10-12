@@ -2,7 +2,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '1.4.1';
+  const VERSION = '1.5.0';
 
   // ------------------------------------------------------------------
   // Speicher (nur lokal auf dem Gerät)
@@ -840,6 +840,62 @@
   });
 
   $('#appVersion').textContent = VERSION;
+
+  // ------------------------------------------------------------------
+  // Updates: version.json vom Server mit der installierten Version vergleichen
+  // ------------------------------------------------------------------
+  const newer = (a, b) => {
+    const pa = a.split('.').map(Number), pb = b.split('.').map(Number);
+    for (let i = 0; i < 3; i++) if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) > (pb[i] || 0);
+    return false;
+  };
+  let latestVersion = null;
+
+  async function checkForUpdate(manual) {
+    const status = $('#updateStatus');
+    if (manual) status.textContent = 'Suche nach Updates …';
+    try {
+      const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
+      const data = await res.json();
+      latestVersion = data.version;
+    } catch (_) {
+      if (manual) status.textContent = `Installierte Version: ${VERSION} – keine Internetverbindung.`;
+      return;
+    }
+    const available = newer(latestVersion, VERSION);
+    $('#btnUpdate').hidden = !available;
+    $('#updateDot').hidden = !available;
+    $('#updateBox').classList.toggle('has-update', available);
+    if (available) {
+      $('#btnUpdate').textContent = `Version ${latestVersion} installieren`;
+      status.innerHTML = `Installiert: <strong>${VERSION}</strong> · Neu verfügbar: <strong>${latestVersion}</strong>`;
+    } else {
+      status.innerHTML = `Installierte Version: <strong>${VERSION}</strong>` + (manual ? ' – das ist die neueste.' : '');
+    }
+  }
+
+  async function installUpdate() {
+    if ((T.state === 'running' || T.state === 'paused') && !confirm('Der Timer läuft. Trotzdem jetzt aktualisieren?')) return;
+    $('#updateStatus').textContent = 'Update wird installiert …';
+    try {
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg) await reg.update().catch(() => {});
+      }
+    } catch (_) { /* trotzdem neu laden */ }
+    location.replace(`./?v=${encodeURIComponent(latestVersion || Date.now())}#/info`);
+  }
+
+  $('#btnCheckUpdate').addEventListener('click', () => checkForUpdate(true));
+  $('#btnUpdate').addEventListener('click', installUpdate);
+  setTimeout(() => checkForUpdate(false), 1500);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && T.state !== 'running') checkForUpdate(false);
+  });
 
   // ------------------------------------------------------------------
   // Navigation (Hash-Routing)
