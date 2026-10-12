@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#111418">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Boxtimer">
+  <meta name="description" content="Einfacher Boxtimer mit Runden- und Pausenzeit, Profilen, Klopf- und Gongsignal. Private, nicht-kommerzielle Nutzung.">
+  <title>Claudia Boxtimer</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="app">
+
+    <!-- ============ TIMER ============ -->
+    <section id="view-timer" class="view" data-phase="idle">
+      <header class="timer-head">
+        <button class="profile-chip" id="profileChip" type="button" aria-label="Profil wechseln">
+          <span id="profileName">Profil</span> <span aria-hidden="true">▾</span>
+        </button>
+        <div class="round-count" id="roundCount">Runde 1/3</div>
+      </header>
+
+      <div class="timer-body">
+        <div class="phase-label" id="phaseLabel">BEREIT</div>
+        <div class="time" id="time" aria-live="off">3:00</div>
+        <div class="progress" aria-hidden="true"><div class="progress-bar" id="progressBar"></div></div>
+        <div class="next" id="nextInfo">&nbsp;</div>
+      </div>
+
+      <div class="controls">
+        <button type="button" class="ctrl ctrl-small" id="btnReset" aria-label="Zurücksetzen">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg>
+        </button>
+        <button type="button" class="ctrl ctrl-main" id="btnStart" aria-label="Start">
+          <svg viewBox="0 0 24 24" class="ic-play" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+          <svg viewBox="0 0 24 24" class="ic-pause" aria-hidden="true"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+        </button>
+        <button type="button" class="ctrl ctrl-small" id="btnSkip" aria-label="Nächste Phase">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5v14l9-7zM15 5h3v14h-3z"/></svg>
+        </button>
+      </div>
+      <div class="total" id="totalInfo">&nbsp;</div>
+    </section>
+
+    <!-- ============ PROFILE LIST ============ -->
+    <section id="view-profiles" class="view page" hidden>
+      <h1>Profile</h1>
+      <p class="muted">Tippe auf ein Profil, um es zu verwenden. Mit „Bearbeiten“ änderst du Zeiten und Runden.</p>
+      <ul class="profile-list" id="profileList"></ul>
+      <button type="button" class="btn btn-primary btn-block" id="btnNewProfile">+ Neues Profil</button>
+    </section>
+
+    <!-- ============ PROFILE EDIT ============ -->
+    <section id="view-edit" class="view page" hidden>
+      <h1 id="editTitle">Profil bearbeiten</h1>
+      <form id="editForm" autocomplete="off">
+        <label class="field">
+          <span class="field-label">Name</span>
+          <input type="text" id="fName" maxlength="40" required placeholder="z. B. Sparring">
+        </label>
+
+        <div class="field">
+          <span class="field-label">Anzahl Runden</span>
+          <div class="stepper" data-field="rounds" data-min="1" data-max="99" data-step="1">
+            <button type="button" class="step-btn" data-dir="-1" aria-label="weniger">−</button>
+            <input type="number" inputmode="numeric" id="fRounds" min="1" max="99">
+            <button type="button" class="step-btn" data-dir="1" aria-label="mehr">+</button>
+          </div>
+        </div>
+
+        <div class="field field-round">
+          <span class="field-label"><i class="dot dot-green"></i>Rundenzeit</span>
+          <div class="timefield" data-field="round" data-min="5" data-max="5940" data-step="15">
+            <button type="button" class="step-btn" data-dir="-1" aria-label="weniger">−</button>
+            <input type="number" inputmode="numeric" class="tf-min" min="0" max="99" aria-label="Minuten"><span class="colon">:</span><input type="number" inputmode="numeric" class="tf-sec" min="0" max="59" aria-label="Sekunden">
+            <button type="button" class="step-btn" data-dir="1" aria-label="mehr">+</button>
+          </div>
+        </div>
+
+        <div class="field field-rest">
+          <span class="field-label"><i class="dot dot-red"></i>Pausenzeit</span>
+          <div class="timefield" data-field="rest" data-min="0" data-max="5940" data-step="5">
+            <button type="button" class="step-btn" data-dir="-1" aria-label="weniger">−</button>
+            <input type="number" inputmode="numeric" class="tf-min" min="0" max="99" aria-label="Minuten"><span class="colon">:</span><input type="number" inputmode="numeric" class="tf-sec" min="0" max="59" aria-label="Sekunden">
+            <button type="button" class="step-btn" data-dir="1" aria-label="mehr">+</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label"><i class="dot dot-amber"></i>Vorbereitungszeit</span>
+          <div class="timefield" data-field="prep" data-min="0" data-max="300" data-step="5">
+            <button type="button" class="step-btn" data-dir="-1" aria-label="weniger">−</button>
+            <input type="number" inputmode="numeric" class="tf-min" min="0" max="5" aria-label="Minuten"><span class="colon">:</span><input type="number" inputmode="numeric" class="tf-sec" min="0" max="59" aria-label="Sekunden">
+            <button type="button" class="step-btn" data-dir="1" aria-label="mehr">+</button>
+          </div>
+          <small class="muted">Zeit zum Fertigmachen, bevor Runde 1 beginnt (0 = sofort).</small>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Klopfsignal vor dem Wechsel (Sekunden)</span>
+          <div class="stepper" data-field="warn" data-min="0" data-max="30" data-step="1">
+            <button type="button" class="step-btn" data-dir="-1" aria-label="weniger">−</button>
+            <input type="number" inputmode="numeric" id="fWarn" min="0" max="30">
+            <button type="button" class="step-btn" data-dir="1" aria-label="mehr">+</button>
+          </div>
+          <small class="muted">Standard: 5 Sekunden. 0 = kein Klopfsignal.</small>
+        </div>
+
+        <p class="muted" id="editTotal"></p>
+
+        <div class="btn-row">
+          <button type="button" class="btn" id="btnCancelEdit">Abbrechen</button>
+          <button type="submit" class="btn btn-primary">Speichern</button>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn btn-ghost" id="btnDuplicate">Duplizieren</button>
+          <button type="button" class="btn btn-danger" id="btnDelete">Löschen</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ============ SETTINGS ============ -->
+    <section id="view-settings" class="view page" hidden>
+      <h1>Einstellungen</h1>
+
+      <div class="field">
+        <span class="field-label">Lautstärke</span>
+        <input type="range" id="sVolume" min="0" max="100" step="1">
+      </div>
+
+      <div class="btn-row">
+        <button type="button" class="btn" id="btnTestKnock">Klopfen testen</button>
+        <button type="button" class="btn" id="btnTestGong">Gong testen</button>
+      </div>
+
+      <label class="switch-row">
+        <span>Display wach halten, solange der Timer läuft</span>
+        <input type="checkbox" id="sWake">
+      </label>
+
+      <label class="switch-row">
+        <span>Dreifacher Gong am Trainingsende</span>
+        <input type="checkbox" id="sEndGong">
+      </label>
+
+      <div class="hint">
+        <strong>Tipps fürs iPhone</strong>
+        <ul>
+          <li>Ton kommt erst nach dem ersten Tippen auf Start (Vorgabe von iOS).</li>
+          <li>Bei gesperrtem Bildschirm pausiert iOS Web-Apps – lass das Display an. Die App versucht, die automatische Sperre zu verhindern; falls das nicht klappt: <em>Einstellungen → Anzeige &amp; Helligkeit → Automatische Sperre</em>.</li>
+          <li>Lautstärke mit den iPhone-Tasten einstellen.</li>
+        </ul>
+      </div>
+
+      <button type="button" class="btn btn-danger btn-block" id="btnResetAll">Alle Profile auf Standard zurücksetzen</button>
+    </section>
+
+    <!-- ============ INFO ============ -->
+    <section id="view-info" class="view page" hidden>
+      <h1>Info</h1>
+      <p><strong>Claudia Boxtimer</strong> – ein einfacher Rundentimer für Boxen, Kickboxen, Muay Thai, MMA und Intervalltraining.</p>
+
+      <div class="notice">
+        <strong>Nicht-kommerzielle, private Nutzung</strong>
+        <p>Diese App ist ein privates Hobbyprojekt. Sie wird kostenlos und ausschließlich zur privaten, nicht-kommerziellen Nutzung bereitgestellt. Es gibt keine Werbung, keine In-App-Käufe und keine Gewinnerzielungsabsicht.</p>
+      </div>
+
+      <h2>So funktioniert’s</h2>
+      <ul>
+        <li><span class="tag tag-amber">Gelb</span> Vorbereitung</li>
+        <li><span class="tag tag-green">Grün</span> Runde – große Zeitanzeige</li>
+        <li><span class="tag tag-red">Rot</span> Pause – große Zeitanzeige</li>
+        <li><strong>Klopfsignal</strong> 5 Sekunden (einstellbar) vor jedem Wechsel</li>
+        <li><strong>Gong</strong> bei jedem Wechsel, dreifacher Gong am Ende</li>
+        <li>Beliebig viele Profile anlegen, bearbeiten, duplizieren, löschen</li>
+      </ul>
+
+      <h2>Auf dem iPhone installieren</h2>
+      <ol>
+        <li>Diese Seite in <strong>Safari</strong> öffnen.</li>
+        <li>Auf <strong>Teilen</strong> <span aria-hidden="true">(□↑)</span> tippen.</li>
+        <li><strong>„Zum Home-Bildschirm“</strong> wählen.</li>
+      </ol>
+      <p class="muted">Danach startet der Boxtimer wie eine normale App im Vollbild und funktioniert auch offline.</p>
+
+      <h2>Haftung</h2>
+      <p class="muted">Nutzung auf eigene Gefahr. Für Richtigkeit, Verfügbarkeit und Eignung für einen bestimmten Zweck wird keine Gewähr übernommen. Training bitte immer an die eigene Gesundheit anpassen.</p>
+
+      <p><a href="#/datenschutz" class="btn btn-block">Datenschutzerklärung</a></p>
+      <p class="muted small">Version <span id="appVersion"></span></p>
+    </section>
+
+    <!-- ============ DATENSCHUTZ ============ -->
+    <section id="view-privacy" class="view page" hidden>
+      <h1>Datenschutz</h1>
+      <p class="lead">Kurz gesagt: Diese App erhebt, speichert und überträgt <strong>keine personenbezogenen Daten</strong>.</p>
+
+      <h2>1. Wer ist verantwortlich?</h2>
+      <p>Die App ist ein privates, nicht-kommerzielles Projekt der Betreiberin des GitHub-Repositorys „claudia-boxtimer“. Kontakt ist über GitHub möglich.</p>
+
+      <h2>2. Welche Daten verarbeitet die App?</h2>
+      <p>Deine Profile (Name, Rundenzahl, Zeiten) und Einstellungen (Lautstärke usw.) werden ausschließlich <strong>lokal auf deinem Gerät</strong> im Browser-Speicher (<code>localStorage</code>) abgelegt. Sie verlassen dein Gerät nie und werden an niemanden übermittelt.</p>
+      <ul>
+        <li>Keine Registrierung, kein Konto</li>
+        <li>Keine Cookies</li>
+        <li>Keine Analyse-, Tracking- oder Werbedienste</li>
+        <li>Keine Schriftarten, Skripte oder Inhalte von Drittanbietern</li>
+        <li>Kein Zugriff auf Kamera, Mikrofon, Standort oder Kontakte</li>
+      </ul>
+      <p>Die Töne (Klopfen, Gong) werden direkt auf dem Gerät erzeugt. Zum Offline-Betrieb speichert ein sogenannter Service Worker die App-Dateien im Browser-Cache.</p>
+
+      <h2>3. Hosting</h2>
+      <p>Die App-Dateien werden über <strong>GitHub Pages</strong> (GitHub, Inc., USA) ausgeliefert. Beim Abruf der Seite verarbeitet GitHub technisch notwendige Verbindungsdaten (z. B. IP-Adresse, Zeitpunkt, Browsertyp) in Server-Logs, um die Seite auszuliefern und abzusichern. Darauf hat die Betreiberin keinen Einfluss und erhält diese Daten nicht. Details: <a href="https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">Datenschutzerklärung von GitHub</a>.</p>
+      <p>Nach der Installation auf dem Home-Bildschirm läuft die App weitgehend offline; es wird nur gelegentlich nach Updates gesucht.</p>
+
+      <h2>4. Daten löschen</h2>
+      <p>Du kannst alle gespeicherten Daten jederzeit löschen, indem du die App vom Home-Bildschirm entfernst bzw. die Websitedaten in Safari löschst (<em>Einstellungen → Apps → Safari → Erweitert → Websitedaten</em>).</p>
+
+      <h2>5. Deine Rechte</h2>
+      <p>Da keine personenbezogenen Daten bei der Betreiberin ankommen, gibt es dort nichts auszukunften oder zu löschen. Unabhängig davon hast du das Recht, dich bei einer Datenschutz-Aufsichtsbehörde zu beschweren.</p>
+
+      <p class="muted small">Stand: Oktober 2026</p>
+      <p><a href="#/info" class="btn btn-block">Zurück zur Info</a></p>
+    </section>
+  </main>
+
+  <nav class="tabbar" id="tabbar">
+    <a href="#/timer" data-tab="timer">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61 1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42A8.96 8.96 0 0 0 12 4a9 9 0 1 0 9 9c0-2.12-.74-4.07-1.97-5.61zM12 20a7 7 0 1 1 0-14 7 7 0 0 1 0 14z"/></svg>
+      <span>Timer</span>
+    </a>
+    <a href="#/profile" data-tab="profiles">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v2H3zm0 6h18v2H3zm0 6h12v2H3z"/></svg>
+      <span>Profile</span>
+    </a>
+    <a href="#/einstellungen" data-tab="settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/></svg>
+      <span>Einstellungen</span>
+    </a>
+    <a href="#/info" data-tab="info">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/></svg>
+      <span>Info</span>
+    </a>
+  </nav>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
